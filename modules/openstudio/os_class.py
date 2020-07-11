@@ -588,6 +588,44 @@ class Class:
         return len(rows)
 
 
+    def get_attendance_count_attending_only(self):
+        """
+        Return attendance count of paying customers
+
+        - No subscription of type "Staff"
+        - No complementary
+        :return: attendance count of paying customers
+        """
+        db = current.db
+
+        left = [
+            db.customers_subscriptions.on(
+                db.classes_attendance.customers_subscriptions_id ==
+                db.customers_subscriptions.id
+            ),
+            db.school_subscriptions.on(
+                db.customers_subscriptions.school_subscriptions_id ==
+                db.school_subscriptions.id
+            )
+        ]
+
+        query = (db.classes_attendance.classes_id == self.clsID) & \
+                (db.classes_attendance.ClassDate == self.date) & \
+                (db.classes_attendance.BookingStatus == 'attending') & \
+                ((db.classes_attendance.AttendanceType.belongs([1, 2, 3, 6])) |
+                 (db.classes_attendance.AttendanceType == None)) & \
+                ((db.school_subscriptions.StaffSubscription == False) |
+                 (db.school_subscriptions.StaffSubscription == None))
+
+        rows = db(query).select(
+            db.classes_attendance.id,
+            db.school_subscriptions.id,
+            left=left
+        )
+
+        return len(rows)
+
+
     def get_teachers(self):
         """
         Teachers for class
@@ -799,7 +837,7 @@ class Class:
                 elif tprt == 'attendance':
                     # Get list for class type
                     # print("attendance")
-                    attendance_count_paying_customers = self.get_attendance_count_paying_customers()
+                    attendance_count_paying_customers = self.get_attendance_count_attending_only()
                     cltID = self.cls.school_classtypes_id
                     tpalst = db.teachers_payment_attendance_lists_school_classtypes(
                         school_classtypes_id=cltID
